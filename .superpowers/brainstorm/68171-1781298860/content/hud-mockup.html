@@ -1,0 +1,127 @@
+<h2>HUD + Visual Style Mockup</h2>
+<p class="subtitle">Approximate in-game look — military tactical FPS with Babylon.js PBR rendering</p>
+
+<div class="mockup">
+  <div class="mockup-header">In-Game View (Wave 7 of 15)</div>
+  <div class="mockup-body" style="padding:0;overflow:hidden;">
+    <!-- Full game viewport mockup -->
+    <div style="position:relative;width:100%;height:380px;background:#1a1e14;overflow:hidden;font-family:monospace;">
+
+      <!-- Sky / atmosphere -->
+      <div style="position:absolute;inset:0;background:linear-gradient(180deg,#0d1108 0%,#1a2010 40%,#2a2e1a 60%,#1e2214 100%);"></div>
+
+      <!-- Fog layer -->
+      <div style="position:absolute;inset:0;background:radial-gradient(ellipse 120% 60% at 50% 100%,rgba(30,40,20,0.7) 0%,transparent 70%);"></div>
+
+      <!-- Map geometry: building silhouettes -->
+      <div style="position:absolute;bottom:120px;left:0;width:160px;height:140px;background:#0d1008;clip-path:polygon(0 100%,0 30%,30% 0,70% 0,100% 20%,100% 100%);"></div>
+      <div style="position:absolute;bottom:120px;right:0;width:200px;height:100px;background:#0a0e06;clip-path:polygon(0 100%,0 40%,20% 0,80% 0,100% 30%,100% 100%);"></div>
+      <div style="position:absolute;bottom:120px;left:50%;transform:translateX(-50%);width:120px;height:80px;background:#0c1009;"></div>
+
+      <!-- Ground plane -->
+      <div style="position:absolute;bottom:0;left:0;right:0;height:130px;background:linear-gradient(to top,#141810,#1e2214);"></div>
+
+      <!-- Ground grid (perspective) -->
+      <svg style="position:absolute;bottom:0;left:0;width:100%;height:130px;" viewBox="0 0 600 130" preserveAspectRatio="none">
+        <defs><style>.gl{stroke:#2a3020;stroke-width:0.5;fill:none;}</style></defs>
+        <line class="gl" x1="300" y1="0" x2="0" y2="130"/>
+        <line class="gl" x1="300" y1="0" x2="150" y2="130"/>
+        <line class="gl" x1="300" y1="0" x2="300" y2="130"/>
+        <line class="gl" x1="300" y1="0" x2="450" y2="130"/>
+        <line class="gl" x1="300" y1="0" x2="600" y2="130"/>
+        <line class="gl" x1="0" y1="50" x2="600" y2="50"/>
+        <line class="gl" x1="0" y1="80" x2="600" y2="80"/>
+        <line class="gl" x1="0" y1="110" x2="600" y2="110"/>
+      </svg>
+
+      <!-- Enemy 1 (grunt silhouette, far) -->
+      <div style="position:absolute;bottom:128px;left:38%;width:16px;height:32px;">
+        <div style="width:10px;height:10px;background:#cc2200;border-radius:50%;margin:0 auto;box-shadow:0 0 6px #cc2200;"></div>
+        <div style="width:8px;height:16px;background:#992200;margin:0 auto;margin-top:2px;"></div>
+        <div style="width:16px;height:6px;background:#882200;margin:0 auto;"></div>
+      </div>
+
+      <!-- Enemy 2 (heavy, mid) -->
+      <div style="position:absolute;bottom:125px;right:35%;width:24px;height:44px;">
+        <div style="width:14px;height:14px;background:#dd3300;border-radius:50%;margin:0 auto;box-shadow:0 0 8px #dd3300;"></div>
+        <div style="width:12px;height:22px;background:#aa2200;margin:0 auto;margin-top:2px;"></div>
+        <div style="width:22px;height:8px;background:#992200;margin:0 auto;"></div>
+      </div>
+
+      <!-- Muzzle flash hint -->
+      <div style="position:absolute;bottom:60px;left:50%;transform:translateX(-50%);width:6px;height:6px;background:#ffdd00;border-radius:50%;box-shadow:0 0 20px 8px rgba(255,180,0,0.3);opacity:0.6;"></div>
+
+      <!-- ── HUD OVERLAY ── -->
+
+      <!-- Top bar: wave + score -->
+      <div style="position:absolute;top:0;left:0;right:0;padding:10px 16px;display:flex;justify-content:space-between;align-items:flex-start;">
+        <div>
+          <div style="color:#88ff44;font-size:11px;letter-spacing:3px;text-shadow:0 0 8px #88ff44;">WAVE</div>
+          <div style="color:#ccff88;font-size:24px;font-weight:bold;line-height:1;text-shadow:0 0 12px #88ff44;">7<span style="font-size:12px;color:#446622;"> / 15</span></div>
+        </div>
+        <div style="text-align:center;">
+          <div style="color:#668844;font-size:9px;letter-spacing:3px;">SCORE</div>
+          <div style="color:#aadd66;font-size:18px;letter-spacing:2px;text-shadow:0 0 8px #88ff44;">24,180</div>
+        </div>
+        <div style="text-align:right;">
+          <div style="color:#668844;font-size:9px;letter-spacing:3px;">KILLS</div>
+          <div style="color:#aadd66;font-size:18px;text-shadow:0 0 8px #88ff44;">38</div>
+        </div>
+      </div>
+
+      <!-- Crosshair -->
+      <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);">
+        <svg width="24" height="24" viewBox="0 0 24 24">
+          <line x1="12" y1="2" x2="12" y2="8" stroke="#88ff44" stroke-width="1.5" opacity="0.8"/>
+          <line x1="12" y1="16" x2="12" y2="22" stroke="#88ff44" stroke-width="1.5" opacity="0.8"/>
+          <line x1="2" y1="12" x2="8" y2="12" stroke="#88ff44" stroke-width="1.5" opacity="0.8"/>
+          <line x1="16" y1="12" x2="22" y2="12" stroke="#88ff44" stroke-width="1.5" opacity="0.8"/>
+          <circle cx="12" cy="12" r="1.5" fill="#88ff44" opacity="0.9"/>
+        </svg>
+      </div>
+
+      <!-- Bottom-left: health -->
+      <div style="position:absolute;bottom:16px;left:16px;">
+        <div style="color:#668844;font-size:9px;letter-spacing:3px;margin-bottom:4px;">HEALTH</div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <div style="width:120px;height:6px;background:#1a2210;border:1px solid #334422;border-radius:2px;overflow:hidden;">
+            <div style="width:72%;height:100%;background:linear-gradient(90deg,#44ff22,#88ff44);box-shadow:0 0 8px #44ff22;"></div>
+          </div>
+          <span style="color:#88ff44;font-size:13px;font-weight:bold;">72</span>
+        </div>
+      </div>
+
+      <!-- Bottom-right: ammo -->
+      <div style="position:absolute;bottom:16px;right:16px;text-align:right;">
+        <div style="color:#668844;font-size:9px;letter-spacing:3px;margin-bottom:4px;">AMMO</div>
+        <div style="color:#ccff88;font-size:22px;font-weight:bold;text-shadow:0 0 8px #88ff44;">18 <span style="font-size:12px;color:#446622;">/ 90</span></div>
+        <div style="color:#446633;font-size:9px;letter-spacing:2px;">AR-15 ▪ SEMI</div>
+      </div>
+
+      <!-- Bottom-center: intermission hint (hidden during wave) -->
+      <!-- Enemy counter mid-top -->
+      <div style="position:absolute;top:64px;left:50%;transform:translateX(-50%);text-align:center;">
+        <div style="background:rgba(0,0,0,0.5);border:1px solid #334422;border-radius:3px;padding:3px 10px;">
+          <span style="color:#ff4422;font-size:10px;letter-spacing:2px;">▲ 4 ENEMIES LEFT</span>
+        </div>
+      </div>
+
+      <!-- Vignette -->
+      <div style="position:absolute;inset:0;background:radial-gradient(ellipse 100% 100% at 50% 50%,transparent 60%,rgba(0,0,0,0.5) 100%);pointer-events:none;"></div>
+
+    </div>
+  </div>
+</div>
+
+<div class="section" style="margin-top:20px;">
+  <h3>Rendering Features (Babylon.js)</h3>
+  <ul style="color:#aaa;font-size:13px;line-height:1.8;padding-left:20px;">
+    <li>PBR materials — metal/roughness on all surfaces</li>
+    <li>Dynamic shadows — sun + muzzle flash as light sources</li>
+    <li>Screen-space ambient occlusion (SSAO2)</li>
+    <li>Bloom post-process on emissive surfaces (muzzle flash, enemy glow)</li>
+    <li>Depth of field (subtle — focused on crosshair distance)</li>
+    <li>Fog for atmosphere + performance (limits draw distance)</li>
+    <li>Particle systems: muzzle flash, blood splatter, explosion</li>
+  </ul>
+</div>
