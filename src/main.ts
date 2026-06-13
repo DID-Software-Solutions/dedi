@@ -12,9 +12,18 @@ import { SaveData } from './utils/SaveData';
 import { Juice } from './utils/Juice';
 import { ProceduralAudio } from './utils/ProceduralAudio';
 import { GamePhase } from './types';
+import { isUnsupportedDevice, showUnsupportedScreen } from './ui/DeviceGate';
 
 const canvas = document.getElementById('renderCanvas') as HTMLCanvasElement;
 const ui = document.getElementById('ui') as HTMLElement;
+
+// Touch-only devices can't play (no pointer-lock aiming / WASD) — block early,
+// before the engine and scene are ever built.
+if (isUnsupportedDevice()) {
+  ui.style.pointerEvents = 'auto';
+  showUnsupportedScreen(ui);
+  throw new Error('DEDI: unsupported device (desktop only)');
+}
 
 const engine = new Engine(canvas, true, { preserveDrawingBuffer: true, stencil: true });
 const scene = new Scene(engine);
