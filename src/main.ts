@@ -107,6 +107,8 @@ function buildSystems(): void {
   enemySystem.setDeps(juice, audio, projectiles);
   enemySystem.setSpawnZones(gameScene.spawnZones.map(z => z.position));
   enemySystem.setShadowGenerator(gameScene.getShadowGenerator());
+  playerSystem.setObstacles(gameScene.obstacles);
+  enemySystem.setObstacles(gameScene.obstacles);
   projectiles.clearAll();
 }
 

@@ -6,6 +6,8 @@ import {
   type Camera, type AbstractMesh, type Light, type Mesh,
 } from '@babylonjs/core';
 
+import type { Obstacle } from '../systems/Collision';
+
 export interface SpawnZone { position: Vector3; }
 
 export class GameScene {
@@ -17,6 +19,8 @@ export class GameScene {
   private probe: ReflectionProbe | null = null;
   private dust: ParticleSystem | null = null;
   spawnZones: SpawnZone[] = [];
+  /** Static world collision shapes (XZ plane) for player + enemy movement. */
+  obstacles: Obstacle[] = [];
 
   constructor(scene: Scene) {
     this.scene = scene;
@@ -183,6 +187,10 @@ export class GameScene {
       b.receiveShadows = true;
       this.shadowGen.addShadowCaster(b);
       this.meshes.push(b);
+      this.obstacles.push({
+        kind: 'box', cx: def.pos.x, cz: def.pos.z,
+        hx: def.size.x / 2, hz: def.size.z / 2,
+      });
 
       // Glowing neon trim strip near the base.
       const col = trimColors[i % trimColors.length];
@@ -217,6 +225,8 @@ export class GameScene {
       c.rotation.y = (i % 3) * 0.3;
       this.shadowGen.addShadowCaster(c);
       this.meshes.push(c);
+      // Rotated 2m box → treat as a circle for collision.
+      this.obstacles.push({ kind: 'circle', cx: pos.x, cz: pos.z, r: 1.3 });
     });
 
     // Colored atmospheric point lights spread around the arena.

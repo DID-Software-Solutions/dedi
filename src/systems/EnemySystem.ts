@@ -5,6 +5,7 @@ import {
 import { Enemy } from '../entities/Enemy';
 import { buildEnemyRig, type EnemyRig } from '../entities/EnemyMeshFactory';
 import { EnemyState, EnemyType } from '../types';
+import { resolveCircleXZ, type Obstacle } from './Collision';
 import type { WaveConfig } from '../types';
 import type { Juice } from '../utils/Juice';
 import type { ProceduralAudio } from '../utils/ProceduralAudio';
@@ -32,6 +33,7 @@ export class EnemySystem {
   private medkits: { mesh: Mesh; bob: number }[] = [];
   private shadowGen: ShadowGenerator | null = null;
   private spawnZones: Vector3[] = [];
+  private obstacles: Obstacle[] = [];
   private nextId = 0;
 
   private juice!: Juice;
@@ -45,6 +47,7 @@ export class EnemySystem {
   }
 
   setSpawnZones(zones: Vector3[]): void { this.spawnZones = zones; }
+  setObstacles(obstacles: Obstacle[]): void { this.obstacles = obstacles; }
   setShadowGenerator(sg: ShadowGenerator): void { this.shadowGen = sg; }
   setDeps(juice: Juice, audio: ProceduralAudio, projectiles: ProjectileSystem): void {
     this.juice = juice;
@@ -156,6 +159,7 @@ export class EnemySystem {
       // Keep inside the arena.
       colPos.x = Math.max(-BOUNDARY, Math.min(BOUNDARY, colPos.x));
       colPos.z = Math.max(-BOUNDARY, Math.min(BOUNDARY, colPos.z));
+      if (this.obstacles.length) resolveCircleXZ(colPos, 0.5, this.obstacles);
 
       this._animateLocomotion(entry, dt, moving);
     }
