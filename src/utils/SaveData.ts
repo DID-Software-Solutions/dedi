@@ -14,9 +14,15 @@ export const SaveData = {
       const raw = localStorage.getItem(KEY);
       if (!raw) return { ...DEFAULTS, settings: { ...DEFAULTS.settings } };
       const parsed = JSON.parse(raw) as Partial<ISaveData>;
+      // Coerce numerics on load so a tampered localStorage can never push a
+      // non-number into a DOM render path (defence-in-depth against self-XSS).
+      const num = (v: unknown, fallback: number): number => {
+        const n = Number(v);
+        return Number.isFinite(n) ? n : fallback;
+      };
       return {
-        highScore: parsed.highScore ?? DEFAULTS.highScore,
-        highScoreWave: parsed.highScoreWave ?? DEFAULTS.highScoreWave,
+        highScore: num(parsed.highScore, DEFAULTS.highScore),
+        highScoreWave: num(parsed.highScoreWave, DEFAULTS.highScoreWave),
         settings: { ...DEFAULTS.settings, ...(parsed.settings ?? {}) },
       };
     } catch {

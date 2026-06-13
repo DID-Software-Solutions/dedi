@@ -1,5 +1,5 @@
 import {
-  Scene, UniversalCamera, Vector3, Color3, Ray, KeyboardEventTypes,
+  Scene, UniversalCamera, Vector3, Color3, Ray,
 } from '@babylonjs/core';
 import { Player } from '../entities/Player';
 import { WeaponSystem, WEAPON_ORDER } from './WeaponSystem';
@@ -14,6 +14,8 @@ const SPEED_SPRINT = 19.2;
 const SPEED_CROUCH = 7.2;
 const CAMERA_NORMAL_Y = 1.7;
 const CAMERA_CROUCH_Y = 0.9;
+const GRAVITY = 24;
+const JUMP_SPEED = 7.5;
 
 export type ShootHit = (meshId: string, damage: number, hitPoint: Vector3) => void;
 export type SplashHit = (center: Vector3, damage: number, radius: number) => void;
@@ -33,7 +35,12 @@ export class PlayerSystem {
   private enabled = false;
   private recoilKick = 0;
   private footstepTimer = 0;
+  private velY = 0;
+  private jumpY = 0;
+  private groundY = CAMERA_NORMAL_Y;
+  private grounded = true;
   private _onWindowKey: ((e: KeyboardEvent) => void) | null = null;
+  private _onWindowKeyUp: ((e: KeyboardEvent) => void) | null = null;
 
   private juice!: Juice;
   private audio!: ProceduralAudio;
@@ -82,6 +89,7 @@ export class PlayerSystem {
   dispose(): void {
     this.disable();
     if (this._onWindowKey) window.removeEventListener('keydown', this._onWindowKey);
+    if (this._onWindowKeyUp) window.removeEventListener('keyup', this._onWindowKeyUp);
     this.viewModel.dispose();
     this.camera.dispose();
   }
@@ -93,20 +101,30 @@ export class PlayerSystem {
     this.camera.setTarget(new Vector3(0, CAMERA_NORMAL_Y, 1));
     this.keys.clear();
     this.mouseDown = false;
+    this.velY = 0;
+    this.jumpY = 0;
+    this.groundY = CAMERA_NORMAL_Y;
+    this.grounded = true;
+  }
+
+  private _refreshModifiers(): void {
+    this.isSprinting = this.keys.has('ShiftLeft') || this.keys.has('ShiftRight');
+    this.isCrouching = this.keys.has('ControlLeft') || this.keys.has('ControlRight');
   }
 
   private _bindKeys(): void {
-    this.scene.onKeyboardObservable.add((info) => {
-      if (!this.enabled) return;
-      const key = info.event.code;
-      if (info.type === KeyboardEventTypes.KEYDOWN) this.keys.add(key);
-      if (info.type === KeyboardEventTypes.KEYUP) this.keys.delete(key);
-      this.isSprinting = this.keys.has('ShiftLeft') || this.keys.has('ShiftRight');
-      this.isCrouching = this.keys.has('ControlLeft') || this.keys.has('ControlRight');
-    });
-
+    // Movement + actions both bind to window, not scene.onKeyboardObservable —
+    // the latter only fires once the canvas has focus, so WASD was dead until
+    // the first click. Window-level listeners work from the moment we enable.
     this._onWindowKey = (e: KeyboardEvent) => {
       if (!this.enabled) return;
+      this.keys.add(e.code);
+      this._refreshModifiers();
+
+      if (e.code === 'Space') {
+        e.preventDefault();
+        if (this.grounded) { this.velY = JUMP_SPEED; this.grounded = false; }
+      }
       if (e.code === 'KeyR') {
         const before = this.weapon.isReloading;
         this.weapon.startReload();
@@ -124,7 +142,12 @@ export class PlayerSystem {
         this.audio?.reload();
       }
     };
+    this._onWindowKeyUp = (e: KeyboardEvent) => {
+      this.keys.delete(e.code);
+      this._refreshModifiers();
+    };
     window.addEventListener('keydown', this._onWindowKey);
+    window.addEventListener('keyup', this._onWindowKeyUp);
   }
 
   private _bindMouse(): void {
@@ -180,8 +203,13 @@ export class PlayerSystem {
     this.camera.position.z = Math.max(-boundary, Math.min(boundary, this.camera.position.z));
     if (this.obstacles.length) resolveCircleXZ(this.camera.position, 0.45, this.obstacles);
 
+    // Vertical = a smoothly-lerped crouch baseline plus a ballistic jump arc.
     const targetY = this.isCrouching ? CAMERA_CROUCH_Y : CAMERA_NORMAL_Y;
-    let camY = this.camera.position.y + (targetY - this.camera.position.y) * 10 * dt;
+    this.groundY += (targetY - this.groundY) * 10 * dt;
+    this.velY -= GRAVITY * dt;
+    this.jumpY += this.velY * dt;
+    if (this.jumpY <= 0) { this.jumpY = 0; this.velY = 0; this.grounded = true; }
+    let camY = this.groundY + this.jumpY;
 
     // Camera recoil + screen shake.
     this.recoilKick *= Math.max(0, 1 - dt * 14);
