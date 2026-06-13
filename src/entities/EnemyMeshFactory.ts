@@ -50,7 +50,7 @@ const STYLES: Record<EnemyType, TypeStyle> = {
   },
 };
 
-export function buildEnemyRig(scene: Scene, id: string, type: EnemyType): EnemyRig {
+export function buildEnemyRig(scene: Scene, id: string, type: EnemyType, ranged: boolean): EnemyRig {
   const st = STYLES[type];
   const h = st.height;
   const parts: Mesh[] = [];
@@ -131,9 +131,10 @@ export function buildEnemyRig(scene: Scene, id: string, type: EnemyType): EnemyR
     mk('rpad', { w: st.width * 0.4, h: st.width * 0.3, d: st.width * 0.5 }, trimMat, root, new Vector3(st.width * 0.55, shoulderY, 0));
   }
 
-  // Ranged enemies carry a glowing cannon on the right arm.
+  // Ranged enemies carry a glowing cannon on the right arm; melee enemies
+  // get an invisible head-mounted muzzle node (unused, but keeps the rig shape).
   const muzzle = new TransformNode(`${id}_muzzle`, scene);
-  if (type === EnemyType.Spitter) {
+  if (ranged) {
     const gun = mk('gun', { w: armW * 1.3, h: armW * 1.3, d: armH * 0.9 }, trimMat, rightArm, new Vector3(0, -armH * 0.6, armH * 0.4));
     gun.material = eyeMat;
     muzzle.parent = rightArm;

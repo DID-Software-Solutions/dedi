@@ -5,6 +5,7 @@ import { Player } from '../entities/Player';
 import { WeaponSystem, WEAPON_ORDER } from './WeaponSystem';
 import { ViewModel } from '../utils/ViewModel';
 import { WeaponId } from '../types';
+import { resolveCircleXZ, type Obstacle } from './Collision';
 import type { Juice } from '../utils/Juice';
 import type { ProceduralAudio } from '../utils/ProceduralAudio';
 
@@ -36,6 +37,7 @@ export class PlayerSystem {
 
   private juice!: Juice;
   private audio!: ProceduralAudio;
+  private obstacles: Obstacle[] = [];
 
   constructor(scene: Scene, canvas: HTMLCanvasElement) {
     this.scene = scene;
@@ -59,6 +61,10 @@ export class PlayerSystem {
   setDeps(juice: Juice, audio: ProceduralAudio): void {
     this.juice = juice;
     this.audio = audio;
+  }
+
+  setObstacles(obstacles: Obstacle[]): void {
+    this.obstacles = obstacles;
   }
 
   enable(): void {
@@ -172,6 +178,7 @@ export class PlayerSystem {
     const boundary = 37;
     this.camera.position.x = Math.max(-boundary, Math.min(boundary, this.camera.position.x));
     this.camera.position.z = Math.max(-boundary, Math.min(boundary, this.camera.position.z));
+    if (this.obstacles.length) resolveCircleXZ(this.camera.position, 0.45, this.obstacles);
 
     const targetY = this.isCrouching ? CAMERA_CROUCH_Y : CAMERA_NORMAL_Y;
     let camY = this.camera.position.y + (targetY - this.camera.position.y) * 10 * dt;

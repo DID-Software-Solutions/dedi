@@ -21,6 +21,12 @@ describe('Enemy construction', () => {
     expect(e.hp).toBe(200);
     expect(e.speed).toBe(2);
   });
+
+  it('Grunt and Heavy are ranged; Rusher is melee (per design spec)', () => {
+    expect(new Enemy(EnemyType.Grunt).ranged).toBe(true);
+    expect(new Enemy(EnemyType.Heavy).ranged).toBe(true);
+    expect(new Enemy(EnemyType.Rusher).ranged).toBe(false);
+  });
 });
 
 describe('Enemy.takeDamage', () => {
