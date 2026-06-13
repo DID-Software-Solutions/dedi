@@ -14,8 +14,11 @@ export enum EnemyState {
 }
 
 export enum WeaponId {
-  AssaultRifle = 'ar',
   Pistol = 'pistol',
+  Shotgun = 'shotgun',
+  AssaultRifle = 'ar',
+  SMG = 'smg',
+  Launcher = 'launcher',
 }
 
 export enum GamePhase {
@@ -36,11 +39,26 @@ export interface WaveConfig {
 
 export interface WeaponDef {
   id: WeaponId;
+  name: string;
   damage: number;
   magazineSize: number;
   reloadMs: number;
   fireIntervalMs: number;
   unlimitedAmmo: boolean;
+  /** Starting reserve / cap topped up by ammo drops (ignored if unlimited). */
+  reserveMax: number;
+  /** Pellets fired per shot; >1 = shotgun spread. */
+  pellets: number;
+  /** Cone half-angle in radians applied per pellet. */
+  spread: number;
+  /** Hold-to-fire (full auto) vs click-per-shot. */
+  auto: boolean;
+  /** Launcher: travelling rocket dealing splash damage on impact. */
+  projectile: boolean;
+  /** Splash radius for projectile weapons. */
+  splashRadius: number;
+  /** Total enemy kills required before this weapon unlocks (0 = from start). */
+  unlockKills: number;
 }
 
 export interface SaveData {

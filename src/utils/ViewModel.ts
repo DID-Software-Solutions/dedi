@@ -72,9 +72,10 @@ export class ViewModel {
   }
 
   setWeapon(id: WeaponId): void {
-    const isAR = id === WeaponId.AssaultRifle;
-    this.arGroup.setEnabled(isAR);
-    this.pistolGroup.setEnabled(!isAR);
+    // Two models cover all five guns: long guns use the rifle, the rest the pistol.
+    const isRifle = id === WeaponId.AssaultRifle || id === WeaponId.SMG || id === WeaponId.Launcher;
+    this.arGroup.setEnabled(isRifle);
+    this.pistolGroup.setEnabled(!isRifle);
   }
 
   kick(): void {

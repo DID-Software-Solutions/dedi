@@ -27,7 +27,11 @@ export class HUD {
         #hud-ammo{position:absolute;bottom:20px;right:20px;text-align:right;}
         #hud-ammo-main{font-size:22px;font-weight:bold;text-shadow:0 0 8px #88ff44;}
         #hud-ammo-reserve{font-size:12px;color:#446622;}
+        #hud-weapon-name{font-size:12px;font-weight:bold;letter-spacing:2px;color:#88ff44;text-shadow:0 0 6px #88ff44;margin-bottom:2px;}
         #hud-reload{color:#ffaa22;font-size:11px;letter-spacing:2px;display:none;}
+        #hud-unlock{position:absolute;top:38%;left:50%;transform:translateX(-50%);text-align:center;color:#ffdd44;font-weight:bold;letter-spacing:3px;text-shadow:0 0 14px #ffaa22;opacity:0;transition:opacity .25s;}
+        #hud-unlock .big{font-size:22px;}
+        #hud-unlock .sub{font-size:10px;color:#aa8822;letter-spacing:4px;}
         #hud-crosshair svg{transition:transform .05s;}
         #hud-crosshair.hit svg{transform:scale(1.5);}
         #hud-damage{position:absolute;inset:0;pointer-events:none;opacity:0;background:radial-gradient(ellipse at center,transparent 40%,rgba(255,20,20,.55) 100%);transition:opacity .08s;}
@@ -53,7 +57,9 @@ export class HUD {
           <div class="hud-label">HEALTH</div>
           <div><div id="hud-health-wrap"><div id="hud-health-bar" style="width:100%;"></div></div><span id="hud-health-num">100</span></div>
         </div>
+        <div id="hud-unlock"><div class="sub">WEAPON UNLOCKED</div><div class="big" id="hud-unlock-name"></div></div>
         <div id="hud-ammo">
+          <div id="hud-weapon-name">DILDO PISTOL</div>
           <div class="hud-label">AMMO</div>
           <div id="hud-ammo-main"><span id="hud-ammo-cur">30</span></div>
           <div id="hud-ammo-reserve">/ <span id="hud-ammo-res">90</span></div>
@@ -69,6 +75,7 @@ export class HUD {
     (this.root.querySelector('#hud-enemy-count') as HTMLElement).textContent = `▲ ${enemiesLeft} ENEMIES LEFT`;
     (this.root.querySelector('#hud-health-bar') as HTMLElement).style.width = `${(player.hp / player.maxHp) * 100}%`;
     (this.root.querySelector('#hud-health-num') as HTMLElement).textContent = String(player.hp);
+    (this.root.querySelector('#hud-weapon-name') as HTMLElement).textContent = weapon.def.name;
     (this.root.querySelector('#hud-ammo-cur') as HTMLElement).textContent = String(weapon.ammo);
     const res = weapon.reserveAmmo === Infinity ? '∞' : String(weapon.reserveAmmo);
     (this.root.querySelector('#hud-ammo-res') as HTMLElement).textContent = res;
@@ -87,6 +94,16 @@ export class HUD {
       ch.classList.remove('hit');
       if (svg) svg.querySelectorAll('line,circle').forEach((el) => el.setAttribute('stroke', '#88ff44'));
     }, killed ? 140 : 70);
+  }
+
+  /** Transient center banner announcing a newly unlocked weapon. */
+  weaponUnlocked(name: string): void {
+    const el = this.root.querySelector('#hud-unlock') as HTMLElement;
+    const nameEl = this.root.querySelector('#hud-unlock-name') as HTMLElement;
+    if (!el || !nameEl) return;
+    nameEl.textContent = name;
+    el.style.opacity = '1';
+    setTimeout(() => { el.style.opacity = '0'; }, 2200);
   }
 
   /** Red vignette flash when the player takes damage. */

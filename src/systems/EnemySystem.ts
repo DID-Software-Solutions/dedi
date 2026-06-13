@@ -254,6 +254,20 @@ export class EnemySystem {
     return false;
   }
 
+  /** Launcher splash: damage every live enemy within radius (linear falloff). */
+  damageInRadius(center: Vector3, damage: number, radius: number): number {
+    let kills = 0;
+    for (const entry of [...this.entries]) {
+      if (entry.enemy.state === EnemyState.Dead) continue;
+      const d = Vector3.Distance(center, entry.rig.collider.position);
+      if (d > radius) continue;
+      const dmg = damage * (1 - (d / radius) * 0.6);
+      const point = entry.rig.collider.position.add(new Vector3(0, 0.5, 0));
+      if (this.damageEnemy(entry.id, dmg, point)) kills++;
+    }
+    return kills;
+  }
+
   private _killEnemy(entry: EnemyEntry): void {
     entry.rig.collider.isPickable = false;
     const center = entry.rig.collider.position.add(new Vector3(0, entry.rig.height * 0.4, 0));
