@@ -337,6 +337,15 @@ export class EnemySystem {
     return this.entries.filter(e => e.enemy.state !== EnemyState.Dead).length;
   }
 
+  /** World-XZ positions of live enemies + medkits, for the radar overlay. */
+  getRadarBlips(): { enemies: { x: number; z: number; type: EnemyType }[]; medkits: { x: number; z: number }[] } {
+    const enemies = this.entries
+      .filter(e => e.enemy.state !== EnemyState.Dead)
+      .map(e => ({ x: e.rig.collider.position.x, z: e.rig.collider.position.z, type: e.enemy.type }));
+    const medkits = this.medkits.map(k => ({ x: k.mesh.position.x, z: k.mesh.position.z }));
+    return { enemies, medkits };
+  }
+
   clearAll(): void {
     for (const e of this.entries) this._disposeEntry(e);
     for (const k of this.medkits) k.mesh.dispose();

@@ -6,6 +6,7 @@ import { EnemySystem } from './systems/EnemySystem';
 import { WaveSystem } from './systems/WaveSystem';
 import { ProjectileSystem } from './systems/ProjectileSystem';
 import { HUD } from './ui/HUD';
+import { Radar } from './ui/Radar';
 import { Menus } from './ui/Menus';
 import { ControlsWizard } from './ui/ControlsWizard';
 import { SaveData } from './utils/SaveData';
@@ -52,6 +53,9 @@ ui.appendChild(wizardContainer);
 
 const hud = new HUD(hudContainer);
 hud.hide();
+
+const radar = new Radar(hudContainer);
+radar.hide();
 
 const juice = new Juice(scene);
 const audio = new ProceduralAudio();
@@ -121,6 +125,7 @@ function startGame(): void {
   waveSystem.reset();
   buildSystems();
   hud.show();
+  radar.show();
   phase = GamePhase.Playing;
   playerSystem.enable();
   startNextWave();
@@ -147,6 +152,7 @@ function quitToMenu(): void {
   if (typeof projectiles !== 'undefined') projectiles.clearAll();
   phase = GamePhase.Menu;
   hud.hide();
+  radar.hide();
   menus.showMainMenu(SaveData.load().highScore);
 }
 
@@ -154,6 +160,7 @@ function gameOver(): void {
   phase = GamePhase.GameOver;
   playerSystem.disable();
   hud.hide();
+  radar.hide();
   const isHS = SaveData.updateHighScore(playerSystem.player.score, waveSystem.getCurrentWave());
   menus.showGameOver(playerSystem.player.score, playerSystem.player.kills, waveSystem.getCurrentWave(), isHS);
 }
@@ -162,6 +169,7 @@ function victory(): void {
   phase = GamePhase.Victory;
   if (typeof playerSystem !== 'undefined') playerSystem.disable();
   hud.hide();
+  radar.hide();
   const isHS = SaveData.updateHighScore(playerSystem.player.score, waveSystem.getCurrentWave());
   menus.showVictory(playerSystem.player.score, playerSystem.player.kills, isHS);
 }
@@ -205,6 +213,11 @@ engine.runRenderLoop(() => {
     if (healed > 0) playerSystem.player.heal(healed);
 
     hud.update(playerSystem.player, playerSystem.weapon, waveSystem.getCurrentWave(), enemySystem.aliveCount());
+
+    const blips = enemySystem.getRadarBlips();
+    radar.update(
+      playerSystem.camera.position.x, playerSystem.camera.position.z,
+      playerSystem.camera.rotation.y, blips.enemies, blips.medkits);
 
     if (enemySystem.aliveCount() === 0 && !intermissionActive) {
       const dur = waveSystem.getIntermissionDuration();
