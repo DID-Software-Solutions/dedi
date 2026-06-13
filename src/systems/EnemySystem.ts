@@ -337,6 +337,17 @@ export class EnemySystem {
     return this.entries.filter(e => e.enemy.state !== EnemyState.Dead).length;
   }
 
+  /** Aggregate health of all live bosses, for the HUD boss bar. null = no boss. */
+  getBossStatus(): { hp: number; maxHp: number } | null {
+    const bosses = this.entries.filter(
+      e => e.enemy.type === EnemyType.Boss && e.enemy.state !== EnemyState.Dead);
+    if (bosses.length === 0) return null;
+    return {
+      hp: bosses.reduce((s, e) => s + e.enemy.hp, 0),
+      maxHp: bosses.reduce((s, e) => s + e.enemy.maxHp, 0),
+    };
+  }
+
   /** World-XZ positions of live enemies + medkits, for the radar overlay. */
   getRadarBlips(): { enemies: { x: number; z: number; type: EnemyType }[]; medkits: { x: number; z: number }[] } {
     const enemies = this.entries

@@ -7,6 +7,7 @@ const ENEMY_COLOR: Record<EnemyType, string> = {
   [EnemyType.Rusher]: '#ffaa22',
   [EnemyType.Heavy]: '#ff2e6a',
   [EnemyType.Spitter]: '#cc55ff',
+  [EnemyType.Boss]: '#ff1493',
 };
 
 interface Blip { x: number; z: number; type: EnemyType }
@@ -81,7 +82,7 @@ export class Radar {
     for (const e of enemies) {
       const p = plot(e.x, e.z);
       ctx.fillStyle = ENEMY_COLOR[e.type];
-      const rad = e.type === EnemyType.Heavy ? 3.5 : 2.5;
+      const rad = e.type === EnemyType.Boss ? 5 : e.type === EnemyType.Heavy ? 3.5 : 2.5;
       ctx.globalAlpha = p.off ? 0.55 : 1;
       ctx.beginPath(); ctx.arc(p.x, p.y, rad, 0, Math.PI * 2); ctx.fill();
       ctx.globalAlpha = 1;

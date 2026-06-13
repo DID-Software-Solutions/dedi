@@ -35,6 +35,10 @@ export class HUD {
         #hud-crosshair svg{transition:transform .05s;}
         #hud-crosshair.hit svg{transform:scale(1.5);}
         #hud-damage{position:absolute;inset:0;pointer-events:none;opacity:0;background:radial-gradient(ellipse at center,transparent 40%,rgba(255,20,20,.55) 100%);transition:opacity .08s;}
+        #hud-boss{position:absolute;top:96px;left:50%;transform:translateX(-50%);width:46%;max-width:520px;text-align:center;display:none;}
+        #hud-boss-label{font-size:11px;letter-spacing:5px;color:#ff4d8d;text-shadow:0 0 10px #ff1493;margin-bottom:3px;}
+        #hud-boss-wrap{width:100%;height:12px;background:#1a0a12;border:1px solid #66223a;border-radius:3px;overflow:hidden;}
+        #hud-boss-bar{height:100%;width:100%;background:linear-gradient(90deg,#ff1493,#ff7ac0);box-shadow:0 0 12px #ff1493;transition:width .12s;}
       </style>
       <div id="hud">
         <div id="hud-damage"></div>
@@ -44,6 +48,10 @@ export class HUD {
           <div id="hud-kills"><div class="hud-label">KILLS</div><span id="hud-kills-num">0</span></div>
         </div>
         <div id="hud-enemy-count">▲ 0 ENEMIES LEFT</div>
+        <div id="hud-boss">
+          <div id="hud-boss-label">▼ MINI-BOSS ▼</div>
+          <div id="hud-boss-wrap"><div id="hud-boss-bar"></div></div>
+        </div>
         <div id="hud-crosshair">
           <svg width="24" height="24" viewBox="0 0 24 24">
             <line x1="12" y1="2" x2="12" y2="8" stroke="#88ff44" stroke-width="1.5" opacity="0.85"/>
@@ -80,6 +88,16 @@ export class HUD {
     const res = weapon.reserveAmmo === Infinity ? '∞' : String(weapon.reserveAmmo);
     (this.root.querySelector('#hud-ammo-res') as HTMLElement).textContent = res;
     (this.root.querySelector('#hud-reload') as HTMLElement).style.display = weapon.isReloading ? 'block' : 'none';
+  }
+
+  /** Show/refresh the mini-boss health bar; pass null to hide it. */
+  updateBoss(status: { hp: number; maxHp: number } | null): void {
+    const wrap = this.root.querySelector('#hud-boss') as HTMLElement;
+    if (!wrap) return;
+    if (!status || status.maxHp <= 0) { wrap.style.display = 'none'; return; }
+    wrap.style.display = 'block';
+    const pct = Math.max(0, Math.min(100, (status.hp / status.maxHp) * 100));
+    (this.root.querySelector('#hud-boss-bar') as HTMLElement).style.width = `${pct}%`;
   }
 
   /** Crosshair pulse on hit; brighter on a kill. */

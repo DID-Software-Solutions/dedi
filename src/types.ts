@@ -3,6 +3,7 @@ export enum EnemyType {
   Rusher = 'rusher',
   Heavy = 'heavy',
   Spitter = 'spitter',
+  Boss = 'boss',
 }
 
 export enum EnemyState {

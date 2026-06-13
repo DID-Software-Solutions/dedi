@@ -213,6 +213,7 @@ engine.runRenderLoop(() => {
     if (healed > 0) playerSystem.player.heal(healed);
 
     hud.update(playerSystem.player, playerSystem.weapon, waveSystem.getCurrentWave(), enemySystem.aliveCount());
+    hud.updateBoss(enemySystem.getBossStatus());
 
     const blips = enemySystem.getRadarBlips();
     radar.update(
