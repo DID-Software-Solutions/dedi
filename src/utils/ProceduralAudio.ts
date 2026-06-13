@@ -51,35 +51,42 @@ export class ProceduralAudio {
 
   // --- Sound effects -------------------------------------------------------
 
-  /** Punchy rifle crack: noise burst + low body thump. */
-  shoot(weapon: 'ar' | 'pistol' = 'ar'): void {
+  /** Punchy gunshot: noise crack + low body thump, tuned per weapon. */
+  shoot(weapon: 'ar' | 'pistol' | 'shotgun' | 'smg' | 'launcher' = 'ar'): void {
     if (!this.ready) return;
+    // Per-weapon tone: [crack peak, highpass Hz, crack dur, thump start, thump dur].
+    const tone = {
+      ar:       { peak: 0.5,  hp: 700,  dur: 0.12, sub: 180, subDur: 0.1 },
+      pistol:   { peak: 0.42, hp: 1100, dur: 0.12, sub: 180, subDur: 0.1 },
+      smg:      { peak: 0.34, hp: 1300, dur: 0.08, sub: 150, subDur: 0.07 },
+      shotgun:  { peak: 0.6,  hp: 450,  dur: 0.22, sub: 110, subDur: 0.2 },
+      launcher: { peak: 0.55, hp: 260,  dur: 0.3,  sub: 80,  subDur: 0.35 },
+    }[weapon];
     const t = this._now();
     const g = this.ctx!.createGain();
     g.connect(this.master);
-    const peak = weapon === 'ar' ? 0.5 : 0.42;
-    g.gain.setValueAtTime(peak, t);
-    g.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
+    g.gain.setValueAtTime(tone.peak, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + tone.dur);
 
     const hp = this.ctx!.createBiquadFilter();
     hp.type = 'highpass';
-    hp.frequency.value = weapon === 'ar' ? 700 : 1100;
-    const noise = this._noise(0.12);
+    hp.frequency.value = tone.hp;
+    const noise = this._noise(tone.dur);
     noise.connect(hp);
     hp.connect(g);
 
     // Low-end thump for weight.
     const osc = this.ctx!.createOscillator();
     osc.type = 'sine';
-    osc.frequency.setValueAtTime(180, t);
-    osc.frequency.exponentialRampToValueAtTime(50, t + 0.1);
+    osc.frequency.setValueAtTime(tone.sub, t);
+    osc.frequency.exponentialRampToValueAtTime(45, t + tone.subDur);
     const og = this.ctx!.createGain();
     og.gain.setValueAtTime(0.5, t);
-    og.gain.exponentialRampToValueAtTime(0.001, t + 0.1);
+    og.gain.exponentialRampToValueAtTime(0.001, t + tone.subDur);
     osc.connect(og);
     og.connect(this.master);
     osc.start(t);
-    osc.stop(t + 0.1);
+    osc.stop(t + tone.subDur);
   }
 
   /** Metallic reload click-clack (two short transients). */

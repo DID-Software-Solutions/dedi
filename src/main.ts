@@ -76,6 +76,16 @@ projectiles.onPlayerHit = (dmg, pos) => {
   damagePlayer(dmg);
 };
 
+// Credit a kill, then unlock the next weapon if the kill count crossed a threshold.
+function registerKill(): void {
+  playerSystem.player.addKill();
+  const unlocked = playerSystem.weapon.unlockByKills(playerSystem.player.kills);
+  if (!unlocked) return;
+  playerSystem.viewModel.setWeapon(playerSystem.weapon.currentWeapon);
+  audio.pickup();
+  hud.weaponUnlocked(unlocked.name);
+}
+
 const menus = new Menus(menuContainer, {
   onPlay: startGame,
   onResume: resumeGame,
@@ -169,11 +179,19 @@ engine.runRenderLoop(() => {
   scene.render();
 
   if (phase === GamePhase.Playing && typeof playerSystem !== 'undefined' && typeof enemySystem !== 'undefined') {
-    playerSystem.update(dt, (meshId, dmg, hitPoint) => {
-      const killed = enemySystem.damageEnemy(meshId, dmg, hitPoint);
-      hud.hitmarker(killed);
-      if (killed) playerSystem.player.addKill();
-    });
+    playerSystem.update(dt,
+      (meshId, dmg, hitPoint) => {
+        const killed = enemySystem.damageEnemy(meshId, dmg, hitPoint);
+        hud.hitmarker(killed);
+        if (killed) registerKill();
+      },
+      (center, dmg, radius) => {
+        const kills = enemySystem.damageInRadius(center, dmg, radius);
+        juice.deathExplosion(center, new Color3(1, 0.6, 0.2));
+        audio.explosion();
+        hud.hitmarker(kills > 0);
+        for (let i = 0; i < kills; i++) registerKill();
+      });
 
     enemySystem.update(dt, playerSystem.camera.position, (dmg) => damagePlayer(dmg));
     projectiles.update(dt, playerSystem.camera.position);

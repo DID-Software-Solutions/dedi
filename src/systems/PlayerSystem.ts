@@ -1,8 +1,8 @@
 import {
-  Scene, UniversalCamera, Vector3, Ray, KeyboardEventTypes,
+  Scene, UniversalCamera, Vector3, Color3, Ray, KeyboardEventTypes,
 } from '@babylonjs/core';
 import { Player } from '../entities/Player';
-import { WeaponSystem } from './WeaponSystem';
+import { WeaponSystem, WEAPON_ORDER } from './WeaponSystem';
 import { ViewModel } from '../utils/ViewModel';
 import { WeaponId } from '../types';
 import type { Juice } from '../utils/Juice';
@@ -15,6 +15,7 @@ const CAMERA_NORMAL_Y = 1.7;
 const CAMERA_CROUCH_Y = 0.9;
 
 export type ShootHit = (meshId: string, damage: number, hitPoint: Vector3) => void;
+export type SplashHit = (center: Vector3, damage: number, radius: number) => void;
 
 export class PlayerSystem {
   camera: UniversalCamera;
@@ -49,6 +50,7 @@ export class PlayerSystem {
     scene.activeCamera = this.camera;
 
     this.viewModel = new ViewModel(scene, this.camera);
+    this.viewModel.setWeapon(this.weapon.currentWeapon);
 
     this._bindKeys();
     this._bindMouse();
@@ -109,6 +111,12 @@ export class PlayerSystem {
         this.viewModel.setWeapon(this.weapon.currentWeapon);
         this.audio?.reload();
       }
+      // Number keys 1..5 directly select an unlocked weapon.
+      const slot = ['Digit1', 'Digit2', 'Digit3', 'Digit4', 'Digit5'].indexOf(e.code);
+      if (slot >= 0 && this.weapon.selectWeapon(WEAPON_ORDER[slot])) {
+        this.viewModel.setWeapon(this.weapon.currentWeapon);
+        this.audio?.reload();
+      }
     };
     window.addEventListener('keydown', this._onWindowKey);
   }
@@ -135,7 +143,7 @@ export class PlayerSystem {
     });
   }
 
-  update(dt: number, onHit: ShootHit): void {
+  update(dt: number, onHit: ShootHit, onSplash: SplashHit): void {
     if (!this.enabled) return;
     this.weapon.update(dt);
 
@@ -177,36 +185,79 @@ export class PlayerSystem {
     this.camera.rotation.x -= this.recoilKick * dt * 4;
 
     if (this.mouseDown && this.weapon.canFire()) {
+      const wasReloading = this.weapon.isReloading;
       this.weapon.fire();
-      this._doShoot(onHit);
+      this._doShoot(onHit, onSplash);
+      // fire() can kick off an auto-reload when the mag empties.
+      if (!wasReloading && this.weapon.isReloading) this.audio?.reload();
     }
 
     this.viewModel.update(dt, moving);
   }
 
-  private _doShoot(onHit: ShootHit): void {
+  private static readonly _AUDIO_TAG: Record<WeaponId, 'ar' | 'pistol' | 'shotgun' | 'smg' | 'launcher'> = {
+    [WeaponId.Pistol]: 'pistol',
+    [WeaponId.Shotgun]: 'shotgun',
+    [WeaponId.AssaultRifle]: 'ar',
+    [WeaponId.SMG]: 'smg',
+    [WeaponId.Launcher]: 'launcher',
+  };
+
+  private _doShoot(onHit: ShootHit, onSplash: SplashHit): void {
     const origin = this.camera.position.clone();
-    const dir = this.camera.getForwardRay(1).direction.normalize();
+    const baseDir = this.camera.getForwardRay(1).direction.normalize();
+    const def = this.weapon.def;
+    const muzzlePos = this.viewModel.muzzle.getAbsolutePosition();
+
+    // Feedback fired once per trigger pull (not per pellet).
+    this.audio?.shoot(PlayerSystem._AUDIO_TAG[this.weapon.currentWeapon]);
+    this.recoilKick = Math.min(0.12, this.recoilKick + (def.auto ? 0.03 : 0.05));
+    this.viewModel.kick();
+    this.juice?.muzzleFlash(muzzlePos, baseDir);
+
+    if (def.projectile) {
+      this._fireProjectile(origin, baseDir, muzzlePos, def.damage, def.splashRadius, onSplash);
+      return;
+    }
+
+    for (let i = 0; i < def.pellets; i++) {
+      const dir = def.spread > 0 ? this._spread(baseDir, def.spread) : baseDir;
+      this._fireHitscan(origin, dir, muzzlePos, def.damage, onHit);
+    }
+  }
+
+  /** Random direction inside a cone of half-angle ≈ amt radians. */
+  private _spread(dir: Vector3, amt: number): Vector3 {
+    return new Vector3(
+      dir.x + (Math.random() - 0.5) * amt * 2,
+      dir.y + (Math.random() - 0.5) * amt * 2,
+      dir.z + (Math.random() - 0.5) * amt * 2,
+    ).normalize();
+  }
+
+  private _fireHitscan(origin: Vector3, dir: Vector3, muzzlePos: Vector3, damage: number, onHit: ShootHit): void {
     const ray = new Ray(origin, dir, 200);
     const hit = this.scene.pickWithRay(ray, (m) =>
       m.isPickable && m.isEnabled() && (m.name.startsWith('enemy_') || m.name.startsWith('building') || m.name.startsWith('crate')));
-
-    const muzzlePos = this.viewModel.muzzle.getAbsolutePosition();
     const endPoint = hit?.hit && hit.pickedPoint ? hit.pickedPoint : origin.add(dir.scale(200));
-
-    // Feedback: audio, recoil, muzzle flash, tracer.
-    this.audio?.shoot(this.weapon.currentWeapon === WeaponId.AssaultRifle ? 'ar' : 'pistol');
-    this.recoilKick = Math.min(0.08, this.recoilKick + 0.04);
-    this.viewModel.kick();
-    this.juice?.muzzleFlash(muzzlePos, dir);
     this.juice?.tracer(muzzlePos, endPoint);
 
     if (hit?.hit && hit.pickedMesh && hit.pickedPoint) {
       if (hit.pickedMesh.name.startsWith('enemy_')) {
-        onHit(hit.pickedMesh.name, this.weapon.currentDamage, hit.pickedPoint.clone());
+        onHit(hit.pickedMesh.name, damage, hit.pickedPoint.clone());
       } else {
         this.juice?.impact(hit.pickedPoint.clone(), hit.getNormal(true) ?? dir.scale(-1));
       }
     }
+  }
+
+  /** Launcher round: trace to impact point, then splash everything nearby. */
+  private _fireProjectile(origin: Vector3, dir: Vector3, muzzlePos: Vector3, damage: number, radius: number, onSplash: SplashHit): void {
+    const ray = new Ray(origin, dir, 200);
+    const hit = this.scene.pickWithRay(ray, (m) =>
+      m.isPickable && m.isEnabled() && (m.name.startsWith('enemy_') || m.name.startsWith('building') || m.name.startsWith('crate')));
+    const impact = hit?.hit && hit.pickedPoint ? hit.pickedPoint.clone() : origin.add(dir.scale(60));
+    this.juice?.tracer(muzzlePos, impact, new Color3(1, 0.5, 0.2));
+    onSplash(impact, damage, radius);
   }
 }
