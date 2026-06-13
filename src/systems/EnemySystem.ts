@@ -22,7 +22,7 @@ interface EnemyEntry {
 
 const MEDKIT_DROP_CHANCE = 0.3;
 const MEDKIT_HEAL = 30;
-const ALERT_RANGE = 30;
+const ALERT_RANGE = 100; // larger than the arena: a spawned wave always advances
 const SEPARATION_RADIUS = 1.6;
 const BOUNDARY = 37;
 

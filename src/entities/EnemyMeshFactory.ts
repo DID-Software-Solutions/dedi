@@ -66,11 +66,14 @@ export function buildEnemyRig(scene: Scene, id: string, type: EnemyType): EnemyR
 
   const bodyMat = new StandardMaterial(`${id}_body`, scene);
   bodyMat.diffuseColor = st.body;
-  bodyMat.specularColor = new Color3(0.1, 0.1, 0.1);
+  bodyMat.specularColor = new Color3(0.45, 0.48, 0.55);
+  bodyMat.specularPower = 48;
+  bodyMat.emissiveColor = st.body.scale(0.06);
 
   const trimMat = new StandardMaterial(`${id}_trim`, scene);
   trimMat.diffuseColor = st.trim.scale(0.4);
-  trimMat.emissiveColor = st.trim.scale(0.6);
+  trimMat.emissiveColor = st.trim.scale(0.55);
+  trimMat.specularColor = new Color3(0.6, 0.6, 0.6);
 
   const eyeMat = new StandardMaterial(`${id}_eye`, scene);
   eyeMat.emissiveColor = st.eye;

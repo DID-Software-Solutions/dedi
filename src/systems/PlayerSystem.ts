@@ -141,7 +141,7 @@ export class PlayerSystem {
 
     const speed = this.isCrouching ? SPEED_CROUCH : this.isSprinting ? SPEED_SPRINT : SPEED_NORMAL;
     const fwd = this.camera.getForwardRay(1).direction;
-    const right = Vector3.Cross(fwd, Vector3.Up()).normalize();
+    const right = Vector3.Cross(Vector3.Up(), fwd).normalize();
     fwd.y = 0; fwd.normalize();
 
     const move = Vector3.Zero();
