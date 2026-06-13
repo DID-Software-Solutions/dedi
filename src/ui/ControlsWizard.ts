@@ -29,6 +29,7 @@ export class ControlsWizard {
         <div class="wsub">MILITARY WAVE SHOOTER</div>
         <div class="ctrl-grid">
           <div class="key">W A S D</div><div class="desc">Move</div>
+          <div class="key">SPACE</div><div class="desc">Jump</div>
           <div class="key">MOUSE</div><div class="desc">Look / Aim</div>
           <div class="key">LMB (hold)</div><div class="desc">Fire full-auto</div>
           <div class="key">R</div><div class="desc">Reload</div>
