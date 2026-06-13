@@ -11,6 +11,7 @@ import { ControlsWizard } from './ui/ControlsWizard';
 import { SaveData } from './utils/SaveData';
 import { Juice } from './utils/Juice';
 import { ProceduralAudio } from './utils/ProceduralAudio';
+import { PerfOverlay } from './utils/PerfOverlay';
 import { GamePhase } from './types';
 import { isUnsupportedDevice, showUnsupportedScreen } from './ui/DeviceGate';
 
@@ -55,6 +56,7 @@ hud.hide();
 const juice = new Juice(scene);
 const audio = new ProceduralAudio();
 const projectiles = new ProjectileSystem(scene);
+const perfOverlay = new PerfOverlay(engine, scene, ui); // F3 toggles the 60fps readout
 
 const waveSystem = new WaveSystem();
 let playerSystem: PlayerSystem;
@@ -179,6 +181,7 @@ document.addEventListener('keydown', (e) => {
 engine.runRenderLoop(() => {
   const dt = engine.getDeltaTime() / 1000;
   scene.render();
+  perfOverlay.update(dt);
 
   if (phase === GamePhase.Playing && typeof playerSystem !== 'undefined' && typeof enemySystem !== 'undefined') {
     playerSystem.update(dt,
