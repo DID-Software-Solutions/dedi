@@ -6,9 +6,10 @@ interface EnemyStat {
 }
 
 const ENEMY_STATS: Record<EnemyType, EnemyStat> = {
-  [EnemyType.Grunt]:  { hp: 60,  speed: 4, damage: 10, attackInterval: 1.5, attackRange: 2.4 },
+  // Grunt: mid-range rifleman. Heavy: long-range suppression (faster cadence).
+  [EnemyType.Grunt]:  { hp: 60,  speed: 4, damage: 10, attackInterval: 1.5, ranged: true, attackRange: 16 },
   [EnemyType.Rusher]: { hp: 30,  speed: 7, damage: 20, attackInterval: 0.8, attackRange: 2.0 },
-  [EnemyType.Heavy]:  { hp: 200, speed: 2, damage: 15, attackInterval: 2.0, attackRange: 2.8 },
+  [EnemyType.Heavy]:  { hp: 200, speed: 2, damage: 15, attackInterval: 1.0, ranged: true, attackRange: 20 },
   [EnemyType.Spitter]:{ hp: 45,  speed: 3, damage: 12, attackInterval: 2.2, ranged: true, attackRange: 22 },
 };
 

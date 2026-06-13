@@ -70,7 +70,7 @@ export class EnemySystem {
   private _spawnEnemy(type: EnemyType, pos: Vector3): void {
     const id = `enemy_${this.nextId++}`;
     const enemy = new Enemy(type);
-    const rig = buildEnemyRig(this.scene, id, type);
+    const rig = buildEnemyRig(this.scene, id, type, enemy.ranged);
     rig.collider.position = new Vector3(pos.x, rig.height / 2, pos.z);
 
     if (this.shadowGen) for (const p of rig.parts) this.shadowGen.addShadowCaster(p);
