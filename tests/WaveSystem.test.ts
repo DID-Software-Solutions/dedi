@@ -50,6 +50,21 @@ describe('WaveSystem.advance', () => {
     expect(countType(cfg, EnemyType.Heavy)).toBeGreaterThan(0);
   });
 
+  it('spawns a mini-boss on waves 5, 10 and 15 only', () => {
+    const bossWaves = new Set([5, 10, 15]);
+    for (let w = 1; w <= 15; w++) {
+      const cfg = ws.advance();
+      const bosses = countType(cfg, EnemyType.Boss);
+      if (bossWaves.has(w)) expect(bosses).toBeGreaterThan(0);
+      else expect(bosses).toBe(0);
+    }
+  });
+
+  it('wave 15 spawns two bosses', () => {
+    for (let i = 0; i < 15; i++) ws.advance();
+    expect(countType(ws.getCurrentConfig(), EnemyType.Boss)).toBe(2);
+  });
+
   it('returns null after wave 15', () => {
     for (let i = 0; i < 15; i++) ws.advance();
     expect(ws.isComplete()).toBe(true);

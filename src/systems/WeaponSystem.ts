@@ -50,6 +50,8 @@ export class WeaponSystem {
 
   private fireTimer: number = 0;   // cooldown remaining (seconds)
   private reloadTimer: number = 0; // reload remaining (seconds)
+  /** Fire-rate buff multiplier (1 = base; 1.5 = 50% faster). */
+  fireRateMult: number = 1;
 
   constructor() {
     this.state = {} as Record<WeaponId, AmmoState>;
@@ -74,7 +76,7 @@ export class WeaponSystem {
   fire(): void {
     if (!this.canFire()) return;
     this.state[this.currentWeapon].ammo--;
-    this.fireTimer = this.def.fireIntervalMs / 1000;
+    this.fireTimer = this.def.fireIntervalMs / 1000 / this.fireRateMult;
     if (this.ammo === 0) {
       if (this._hasReserve()) this.startReload();
       else this._autoSwap();

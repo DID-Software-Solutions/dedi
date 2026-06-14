@@ -11,6 +11,8 @@ const ENEMY_STATS: Record<EnemyType, EnemyStat> = {
   [EnemyType.Rusher]: { hp: 30,  speed: 7, damage: 20, attackInterval: 0.8, attackRange: 2.0 },
   [EnemyType.Heavy]:  { hp: 200, speed: 2, damage: 15, attackInterval: 1.0, ranged: true, attackRange: 20 },
   [EnemyType.Spitter]:{ hp: 45,  speed: 3, damage: 12, attackInterval: 2.2, ranged: true, attackRange: 22 },
+  // Boss: slow tanky mini-boss (waves 5/10/15). Ranged lobber with big HP pool.
+  [EnemyType.Boss]:   { hp: 1200, speed: 1.6, damage: 30, attackInterval: 1.4, ranged: true, attackRange: 26 },
 };
 
 export class Enemy {

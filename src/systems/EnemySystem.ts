@@ -1,10 +1,11 @@
 import {
-  Scene, MeshBuilder, StandardMaterial, Color3, Vector3,
+  Scene, Color3, Vector3,
   type ShadowGenerator, type Mesh,
 } from '@babylonjs/core';
 import { Enemy } from '../entities/Enemy';
 import { buildEnemyRig, type EnemyRig } from '../entities/EnemyMeshFactory';
-import { EnemyState, EnemyType } from '../types';
+import { buildPickupMesh, PICKUP_INFO } from '../entities/PickupMeshFactory';
+import { EnemyState, EnemyType, PickupType } from '../types';
 import { resolveCircleXZ, type Obstacle } from './Collision';
 import type { WaveConfig } from '../types';
 import type { Juice } from '../utils/Juice';
@@ -21,8 +22,13 @@ interface EnemyEntry {
   bloodColor: Color3;
 }
 
-const MEDKIT_DROP_CHANCE = 0.3;
-const MEDKIT_HEAL = 30;
+const PICKUP_DROP_CHANCE = 0.4;
+const HEALTH_HEAL = 30;
+const AMMO_AMOUNT = 60;
+const BUFF_TYPES: PickupType[] = [
+  PickupType.Attack, PickupType.Defense, PickupType.Speed,
+  PickupType.FireRate, PickupType.CritChance, PickupType.CritHit,
+];
 const ALERT_RANGE = 100; // larger than the arena: a spawned wave always advances
 const SEPARATION_RADIUS = 1.6;
 const BOUNDARY = 37;
@@ -30,7 +36,7 @@ const BOUNDARY = 37;
 export class EnemySystem {
   private scene: Scene;
   private entries: EnemyEntry[] = [];
-  private medkits: { mesh: Mesh; bob: number }[] = [];
+  private pickups: { mesh: Mesh; bob: number; type: PickupType }[] = [];
   private shadowGen: ShadowGenerator | null = null;
   private spawnZones: Vector3[] = [];
   private obstacles: Obstacle[] = [];
@@ -39,8 +45,6 @@ export class EnemySystem {
   private juice!: Juice;
   private audio!: ProceduralAudio;
   private projectiles!: ProjectileSystem;
-
-  onMedkitSpawned?: (pos: Vector3) => void;
 
   constructor(scene: Scene) {
     this.scene = scene;
@@ -164,7 +168,7 @@ export class EnemySystem {
       this._animateLocomotion(entry, dt, moving);
     }
 
-    this._animateMedkits(dt);
+    this._animatePickups(dt);
   }
 
   /** Soft push-apart so enemies don't overlap into one blob. */
@@ -239,27 +243,43 @@ export class EnemySystem {
     }
   }
 
-  damageEnemy(meshId: string, damage: number, hitPoint?: Vector3): boolean {
+  damageEnemy(
+    meshId: string, damage: number, hitPoint?: Vector3,
+    opts?: { attackMult?: number; critChance?: number; critMult?: number; allowCrit?: boolean },
+  ): { killed: boolean; crit: boolean } {
     const entry = this.entries.find(e => e.id === meshId);
-    if (!entry || entry.enemy.state === EnemyState.Dead) return false;
-    entry.enemy.takeDamage(damage);
+    if (!entry || entry.enemy.state === EnemyState.Dead) return { killed: false, crit: false };
+
+    const attackMult = opts?.attackMult ?? 1;
+    let crit = false;
+    if (opts?.allowCrit) {
+      // Head zone = top ~28% of the rig. Headshots always crit; otherwise roll.
+      const bottom = entry.rig.collider.position.y - entry.rig.height / 2;
+      const head = !!hitPoint && (hitPoint.y - bottom) >= entry.rig.height * 0.72;
+      crit = head || Math.random() < (opts.critChance ?? 0);
+    }
+    const dmg = damage * attackMult * (crit ? (opts?.critMult ?? 3) : 1);
+    entry.enemy.takeDamage(dmg);
 
     const point = hitPoint ?? entry.rig.collider.position.add(new Vector3(0, 0.5, 0));
     this.juice.bloodBurst(point, entry.bloodColor);
     this.audio.hit();
+    if (crit && entry.enemy.hp > 0) {
+      this.juice.floatingText(point.add(new Vector3(0, 0.5, 0)), 'CRIT!', '#ffee44');
+    }
 
     if (entry.enemy.hp === 0) {
       this._killEnemy(entry);
-      return true;
+      return { killed: true, crit };
     }
-    // White hit flash on the body.
-    entry.rig.bodyMat.emissiveColor = new Color3(0.6, 0.6, 0.6);
+    // White (or gold on crit) hit flash on the body.
+    entry.rig.bodyMat.emissiveColor = crit ? new Color3(0.9, 0.8, 0.2) : new Color3(0.6, 0.6, 0.6);
     setTimeout(() => { entry.rig.bodyMat.emissiveColor = new Color3(0, 0, 0); }, 80);
-    return false;
+    return { killed: false, crit };
   }
 
   /** Launcher splash: damage every live enemy within radius (linear falloff). */
-  damageInRadius(center: Vector3, damage: number, radius: number): number {
+  damageInRadius(center: Vector3, damage: number, radius: number, attackMult = 1): number {
     let kills = 0;
     for (const entry of [...this.entries]) {
       if (entry.enemy.state === EnemyState.Dead) continue;
@@ -267,7 +287,7 @@ export class EnemySystem {
       if (d > radius) continue;
       const dmg = damage * (1 - (d / radius) * 0.6);
       const point = entry.rig.collider.position.add(new Vector3(0, 0.5, 0));
-      if (this.damageEnemy(entry.id, dmg, point)) kills++;
+      if (this.damageEnemy(entry.id, dmg, point, { attackMult }).killed) kills++;
     }
     return kills;
   }
@@ -285,8 +305,9 @@ export class EnemySystem {
     entry.rig.trimMat.emissiveColor = new Color3(0.05, 0.02, 0);
     entry.rig.eyeMat.emissiveColor = new Color3(0, 0, 0);
 
-    if (Math.random() < MEDKIT_DROP_CHANCE) {
-      this._spawnMedkit(new Vector3(entry.rig.collider.position.x, 0.4, entry.rig.collider.position.z));
+    if (Math.random() < PICKUP_DROP_CHANCE) {
+      this._spawnPickup(this._randomDropType(),
+        new Vector3(entry.rig.collider.position.x, 0.5, entry.rig.collider.position.z));
     }
     setTimeout(() => this._disposeEntry(entry), 3500);
   }
@@ -298,58 +319,109 @@ export class EnemySystem {
     this.entries = this.entries.filter(e => e !== entry);
   }
 
-  private _spawnMedkit(pos: Vector3): void {
-    const kit = MeshBuilder.CreateBox('medkit', { size: 0.5 }, this.scene);
-    kit.position = pos.clone();
-    const mat = new StandardMaterial('medkitMat', this.scene);
-    mat.diffuseColor = new Color3(0.9, 0.1, 0.1);
-    mat.emissiveColor = new Color3(0.6, 0, 0);
-    kit.material = mat;
-    kit.isPickable = false;
-    this.medkits.push({ mesh: kit, bob: Math.random() * 6.28 });
-    this.onMedkitSpawned?.(pos);
+  /** Weighted drop: health most common, then ammo, then a random buff. */
+  private _randomDropType(): PickupType {
+    const r = Math.random();
+    if (r < 0.3) return PickupType.Health;
+    if (r < 0.5) return PickupType.Ammo;
+    return BUFF_TYPES[Math.floor(Math.random() * BUFF_TYPES.length)];
   }
 
-  private _animateMedkits(dt: number): void {
-    for (const k of this.medkits) {
+  /** Scatter `count` pickups around the arena at wave start (avoids obstacles). */
+  spawnWavePickups(count: number): void {
+    for (let i = 0; i < count; i++) {
+      const type = this._randomDropType();
+      let pos = Vector3.Zero();
+      for (let tries = 0; tries < 12; tries++) {
+        pos = new Vector3((Math.random() - 0.5) * 60, 0.5, (Math.random() - 0.5) * 60);
+        if (!this._blockedByObstacle(pos)) break;
+      }
+      this._spawnPickup(type, pos);
+    }
+  }
+
+  private _blockedByObstacle(p: Vector3): boolean {
+    for (const o of this.obstacles) {
+      if (o.kind === 'circle') {
+        if ((p.x - o.cx) ** 2 + (p.z - o.cz) ** 2 < (o.r + 1) ** 2) return true;
+      } else if (Math.abs(p.x - o.cx) < o.hx + 1 && Math.abs(p.z - o.cz) < o.hz + 1) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private _spawnPickup(type: PickupType, pos: Vector3): void {
+    const mesh = buildPickupMesh(this.scene, type, pos);
+    this.pickups.push({ mesh, bob: Math.random() * 6.28, type });
+  }
+
+  private _animatePickups(dt: number): void {
+    for (const k of this.pickups) {
       k.bob += dt * 3;
       k.mesh.position.y = 0.5 + Math.sin(k.bob) * 0.12;
       k.mesh.rotation.y += dt * 2;
     }
   }
 
-  checkMedkitPickup(playerPos: Vector3): number {
-    let healed = 0;
-    this.medkits = this.medkits.filter(k => {
+  /** Collect pickups within range; returns the types collected this frame. */
+  checkPickups(playerPos: Vector3): PickupType[] {
+    const collected: PickupType[] = [];
+    this.pickups = this.pickups.filter(k => {
       if (Vector3.Distance(playerPos, k.mesh.position) < 1.5) {
-        this.juice?.floatingText(k.mesh.position.add(new Vector3(0, 0.5, 0)), `+${MEDKIT_HEAL}`, '#44ff66');
+        const info = PICKUP_INFO[k.type];
+        this.juice?.floatingText(k.mesh.position.add(new Vector3(0, 0.6, 0)), info.label, info.color.toHexString());
         this.audio?.pickup();
         k.mesh.dispose();
-        healed += MEDKIT_HEAL;
+        collected.push(k.type);
         return false;
       }
       return true;
     });
-    return healed;
+    return collected;
   }
+
+  /** Healing amount a Health pickup restores (exposed for the apply path). */
+  static readonly HEALTH_HEAL = HEALTH_HEAL;
+  static readonly AMMO_AMOUNT = AMMO_AMOUNT;
 
   aliveCount(): number {
     return this.entries.filter(e => e.enemy.state !== EnemyState.Dead).length;
   }
 
-  /** World-XZ positions of live enemies + medkits, for the radar overlay. */
-  getRadarBlips(): { enemies: { x: number; z: number; type: EnemyType }[]; medkits: { x: number; z: number }[] } {
+  /** Aggregate health of all live bosses, for the HUD boss bar. null = no boss. */
+  getBossStatus(): { hp: number; maxHp: number } | null {
+    const bosses = this.entries.filter(
+      e => e.enemy.type === EnemyType.Boss && e.enemy.state !== EnemyState.Dead);
+    if (bosses.length === 0) return null;
+    return {
+      hp: bosses.reduce((s, e) => s + e.enemy.hp, 0),
+      maxHp: bosses.reduce((s, e) => s + e.enemy.maxHp, 0),
+    };
+  }
+
+  /** World-XZ positions of live enemies + pickups, for the radar overlay. */
+  getRadarBlips(): {
+    enemies: { x: number; z: number; type: EnemyType }[];
+    pickups: { x: number; z: number; color: string }[];
+  } {
     const enemies = this.entries
       .filter(e => e.enemy.state !== EnemyState.Dead)
       .map(e => ({ x: e.rig.collider.position.x, z: e.rig.collider.position.z, type: e.enemy.type }));
-    const medkits = this.medkits.map(k => ({ x: k.mesh.position.x, z: k.mesh.position.z }));
-    return { enemies, medkits };
+    const pickups = this.pickups.map(k => ({
+      x: k.mesh.position.x, z: k.mesh.position.z, color: PICKUP_INFO[k.type].color.toHexString(),
+    }));
+    return { enemies, pickups };
+  }
+
+  clearPickups(): void {
+    for (const k of this.pickups) k.mesh.dispose();
+    this.pickups = [];
   }
 
   clearAll(): void {
     for (const e of this.entries) this._disposeEntry(e);
-    for (const k of this.medkits) k.mesh.dispose();
+    this.clearPickups();
     this.entries = [];
-    this.medkits = [];
   }
 }

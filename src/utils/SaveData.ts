@@ -5,7 +5,7 @@ const KEY = 'dedi_save';
 const DEFAULTS: ISaveData = {
   highScore: 0,
   highScoreWave: 0,
-  settings: { sensitivity: 0.5, volume: 0.8, fov: 90 },
+  settings: { sensitivity: 0.5, volume: 0.8, fov: 90, muted: false },
 };
 
 export const SaveData = {

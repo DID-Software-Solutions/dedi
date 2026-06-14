@@ -74,6 +74,13 @@ export class PlayerSystem {
     this.obstacles = obstacles;
   }
 
+  /** Move the player to a safe spot (used when the level layout swaps). */
+  teleport(x: number, z: number): void {
+    this.camera.position.x = x;
+    this.camera.position.z = z;
+    this.clearVertical();
+  }
+
   enable(): void {
     this.enabled = true;
     try { this.canvas.requestPointerLock(); } catch { /* headless / sandboxed */ }
@@ -104,6 +111,14 @@ export class PlayerSystem {
     this.velY = 0;
     this.jumpY = 0;
     this.groundY = CAMERA_NORMAL_Y;
+    this.grounded = true;
+  }
+
+  /** Wipe queued vertical motion so a Space press during intermission (e.g. the
+   *  skip-countdown key) doesn't make the player jump when the next wave starts. */
+  clearVertical(): void {
+    this.velY = 0;
+    this.jumpY = 0;
     this.grounded = true;
   }
 
@@ -174,9 +189,11 @@ export class PlayerSystem {
 
   update(dt: number, onHit: ShootHit, onSplash: SplashHit): void {
     if (!this.enabled) return;
+    this.weapon.fireRateMult = this.player.fireRateMult;
     this.weapon.update(dt);
 
-    const speed = this.isCrouching ? SPEED_CROUCH : this.isSprinting ? SPEED_SPRINT : SPEED_NORMAL;
+    const baseSpeed = this.isCrouching ? SPEED_CROUCH : this.isSprinting ? SPEED_SPRINT : SPEED_NORMAL;
+    const speed = baseSpeed * this.player.speedMult;
     const fwd = this.camera.getForwardRay(1).direction;
     const right = Vector3.Cross(Vector3.Up(), fwd).normalize();
     fwd.y = 0; fwd.normalize();

@@ -3,6 +3,7 @@ export enum EnemyType {
   Rusher = 'rusher',
   Heavy = 'heavy',
   Spitter = 'spitter',
+  Boss = 'boss',
 }
 
 export enum EnemyState {
@@ -20,6 +21,23 @@ export enum WeaponId {
   SMG = 'smg',
   Launcher = 'launcher',
 }
+
+/** Floor pickups. Health/Ammo are instant; the rest are stacking run-long buffs. */
+export enum PickupType {
+  Health = 'health',
+  Ammo = 'ammo',
+  Attack = 'attack',
+  Defense = 'defense',
+  Speed = 'speed',
+  FireRate = 'firerate',
+  CritChance = 'critchance',
+  CritHit = 'crithit',
+}
+
+/** The six stackable buff pickups (subset of PickupType). */
+export type BuffType =
+  | PickupType.Attack | PickupType.Defense | PickupType.Speed
+  | PickupType.FireRate | PickupType.CritChance | PickupType.CritHit;
 
 export enum GamePhase {
   Menu = 'menu',
@@ -68,5 +86,6 @@ export interface SaveData {
     sensitivity: number;
     volume: number;
     fov: number;
+    muted: boolean;
   };
 }

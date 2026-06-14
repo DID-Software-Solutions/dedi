@@ -27,6 +27,15 @@ describe('Enemy construction', () => {
     expect(new Enemy(EnemyType.Heavy).ranged).toBe(true);
     expect(new Enemy(EnemyType.Rusher).ranged).toBe(false);
   });
+
+  it('Boss is a slow tanky ranged mini-boss', () => {
+    const b = new Enemy(EnemyType.Boss);
+    expect(b.hp).toBe(1200);
+    expect(b.ranged).toBe(true);
+    // Slowest and toughest of all enemy types.
+    expect(b.speed).toBeLessThan(new Enemy(EnemyType.Heavy).speed);
+    expect(b.maxHp).toBeGreaterThan(new Enemy(EnemyType.Heavy).maxHp);
+  });
 });
 
 describe('Enemy.takeDamage', () => {
