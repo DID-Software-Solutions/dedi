@@ -1,4 +1,5 @@
 import { EnemyType } from '../types';
+import type { Obstacle } from '../systems/Collision';
 
 const SIZE = 150;          // CSS px (square)
 const RANGE = 45;          // world metres mapped to the radar edge
@@ -11,6 +12,7 @@ const ENEMY_COLOR: Record<EnemyType, string> = {
 };
 
 interface Blip { x: number; z: number; type: EnemyType }
+interface Pickup { x: number; z: number; color: string }
 
 /**
  * Heading-relative enemy radar (player forward = up). Drawn each frame onto a
@@ -39,7 +41,10 @@ export class Radar {
   dispose(): void { this.canvas.remove(); }
 
   /** @param heading camera yaw (rad); forward = (sin h, cos h) in world XZ. */
-  update(px: number, pz: number, heading: number, enemies: Blip[], medkits: { x: number; z: number }[]): void {
+  update(
+    px: number, pz: number, heading: number,
+    enemies: Blip[], pickups: Pickup[], obstacles: Obstacle[] = [],
+  ): void {
     const ctx = this.ctx;
     const r = this.r;
     const scale = (r - 8) / RANGE;
@@ -59,6 +64,8 @@ export class Radar {
     ctx.beginPath(); ctx.moveTo(r, 8); ctx.lineTo(r, SIZE - 8); ctx.moveTo(8, r); ctx.lineTo(SIZE - 8, r); ctx.stroke();
 
     // Project a world point into radar-local (forward = up = -y on screen).
+    // Returns raw (unclamped) coords too, for drawing geometry that may extend
+    // partly off-dish.
     const plot = (wx: number, wz: number): { x: number; y: number; off: boolean } => {
       const dx = wx - px, dz = wz - pz;
       const fwd = dx * sin + dz * cos;      // along player forward
@@ -70,12 +77,46 @@ export class Radar {
       if (len > max) { const k = max / len; sx *= k; sy *= k; off = true; }
       return { x: r + sx, y: r + sy, off };
     };
+    // Raw projection (no clamp), for filled obstacle footprints.
+    const raw = (wx: number, wz: number): { x: number; y: number } => {
+      const dx = wx - px, dz = wz - pz;
+      const fwd = dx * sin + dz * cos;
+      const rgt = dx * cos - dz * sin;
+      return { x: r + rgt * scale, y: r - fwd * scale };
+    };
 
-    // Medkits.
-    for (const m of medkits) {
+    // Level geometry (clipped to the dish).
+    ctx.save();
+    ctx.beginPath(); ctx.arc(r, r, r - 4, 0, Math.PI * 2); ctx.clip();
+    ctx.fillStyle = 'rgba(90,120,150,.35)';
+    ctx.strokeStyle = 'rgba(140,180,210,.5)';
+    ctx.lineWidth = 1;
+    for (const o of obstacles) {
+      ctx.beginPath();
+      if (o.kind === 'circle') {
+        const c = raw(o.cx, o.cz);
+        ctx.arc(c.x, c.y, Math.max(1.5, o.r * scale), 0, Math.PI * 2);
+      } else {
+        // Box corners rotated into radar-local space (heading-relative).
+        const corners = [
+          raw(o.cx - o.hx, o.cz - o.hz), raw(o.cx + o.hx, o.cz - o.hz),
+          raw(o.cx + o.hx, o.cz + o.hz), raw(o.cx - o.hx, o.cz + o.hz),
+        ];
+        ctx.moveTo(corners[0].x, corners[0].y);
+        for (let i = 1; i < corners.length; i++) ctx.lineTo(corners[i].x, corners[i].y);
+        ctx.closePath();
+      }
+      ctx.fill(); ctx.stroke();
+    }
+    ctx.restore();
+
+    // Pickups (colour-coded by type).
+    for (const m of pickups) {
       const p = plot(m.x, m.z);
-      ctx.fillStyle = p.off ? '#2a6638' : '#44ff66';
-      ctx.fillRect(p.x - 2, p.y - 2, 4, 4);
+      ctx.globalAlpha = p.off ? 0.5 : 1;
+      ctx.fillStyle = m.color;
+      ctx.fillRect(p.x - 2.5, p.y - 2.5, 5, 5);
+      ctx.globalAlpha = 1;
     }
 
     // Enemies.

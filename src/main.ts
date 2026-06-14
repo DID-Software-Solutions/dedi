@@ -13,7 +13,7 @@ import { SaveData } from './utils/SaveData';
 import { Juice } from './utils/Juice';
 import { ProceduralAudio } from './utils/ProceduralAudio';
 import { PerfOverlay } from './utils/PerfOverlay';
-import { GamePhase } from './types';
+import { GamePhase, PickupType, type BuffType } from './types';
 import { isUnsupportedDevice, showUnsupportedScreen } from './ui/DeviceGate';
 
 const canvas = document.getElementById('renderCanvas') as HTMLCanvasElement;
@@ -68,6 +68,7 @@ let enemySystem: EnemySystem;
 let gameScene: GameScene;
 let intermissionTimer = 0;
 let intermissionActive = false;
+let pausedFrom: GamePhase = GamePhase.Playing; // phase to restore on un-pause
 
 function damagePlayer(dmg: number): void {
   playerSystem.player.takeDamage(dmg);
@@ -90,6 +91,17 @@ function registerKill(): void {
   playerSystem.viewModel.setWeapon(playerSystem.weapon.currentWeapon);
   audio.pickup();
   hud.weaponUnlocked(unlocked.name);
+}
+
+// Apply a collected pickup: heal, refill ammo, or stack a buff.
+function applyPickup(type: PickupType): void {
+  if (type === PickupType.Health) {
+    playerSystem.player.heal(EnemySystem.HEALTH_HEAL);
+  } else if (type === PickupType.Ammo) {
+    playerSystem.weapon.addAmmo(EnemySystem.AMMO_AMOUNT);
+  } else {
+    playerSystem.player.addBuff(type as BuffType);
+  }
 }
 
 const menus = new Menus(menuContainer, {
@@ -134,14 +146,19 @@ function startGame(): void {
 function startNextWave(): void {
   const config = waveSystem.advance();
   if (!config) { victory(); return; }
+  playerSystem.clearVertical(); // drop any jump queued during the intermission
   audio.waveStart();
   enemySystem.spawnWave(config);
 }
 
 function resumeGame(): void {
-  menus.clear();
-  phase = GamePhase.Playing;
+  phase = pausedFrom;
   playerSystem.enable();
+  if (phase === GamePhase.Intermission) {
+    menus.showIntermission(waveSystem.getCurrentWave(), Math.max(0, Math.ceil(intermissionTimer)));
+  } else {
+    menus.clear();
+  }
 }
 
 function quitToMenu(): void {
@@ -176,13 +193,18 @@ function victory(): void {
 
 document.addEventListener('keydown', (e) => {
   if (e.code === 'Escape') {
-    if (phase === GamePhase.Playing) {
+    if (phase === GamePhase.Playing || phase === GamePhase.Intermission) {
+      pausedFrom = phase; // resume back to playing or the frozen countdown
       phase = GamePhase.Paused;
       playerSystem.disable();
       menus.showPause();
     } else if (phase === GamePhase.Paused) {
       resumeGame();
     }
+  } else if (e.code === 'Space' && phase === GamePhase.Intermission) {
+    // Skip the countdown — render loop starts the next wave when the timer hits 0.
+    e.preventDefault();
+    intermissionTimer = 0;
   }
 });
 
@@ -194,12 +216,18 @@ engine.runRenderLoop(() => {
   if (phase === GamePhase.Playing && typeof playerSystem !== 'undefined' && typeof enemySystem !== 'undefined') {
     playerSystem.update(dt,
       (meshId, dmg, hitPoint) => {
-        const killed = enemySystem.damageEnemy(meshId, dmg, hitPoint);
+        const p = playerSystem.player;
+        const { killed } = enemySystem.damageEnemy(meshId, dmg, hitPoint, {
+          attackMult: p.attackMult,
+          critChance: p.critChance,
+          critMult: p.critMult,
+          allowCrit: true,
+        });
         hud.hitmarker(killed);
         if (killed) registerKill();
       },
       (center, dmg, radius) => {
-        const kills = enemySystem.damageInRadius(center, dmg, radius);
+        const kills = enemySystem.damageInRadius(center, dmg, radius, playerSystem.player.attackMult);
         juice.deathExplosion(center, new Color3(1, 0.6, 0.2));
         audio.explosion();
         hud.hitmarker(kills > 0);
@@ -209,8 +237,9 @@ engine.runRenderLoop(() => {
     enemySystem.update(dt, playerSystem.camera.position, (dmg) => damagePlayer(dmg));
     projectiles.update(dt, playerSystem.camera.position);
 
-    const healed = enemySystem.checkMedkitPickup(playerSystem.camera.position);
-    if (healed > 0) playerSystem.player.heal(healed);
+    for (const type of enemySystem.checkPickups(playerSystem.camera.position)) {
+      applyPickup(type);
+    }
 
     hud.update(playerSystem.player, playerSystem.weapon, waveSystem.getCurrentWave(), enemySystem.aliveCount());
     hud.updateBoss(enemySystem.getBossStatus());
@@ -218,7 +247,7 @@ engine.runRenderLoop(() => {
     const blips = enemySystem.getRadarBlips();
     radar.update(
       playerSystem.camera.position.x, playerSystem.camera.position.z,
-      playerSystem.camera.rotation.y, blips.enemies, blips.medkits);
+      playerSystem.camera.rotation.y, blips.enemies, blips.pickups);
 
     if (enemySystem.aliveCount() === 0 && !intermissionActive) {
       const dur = waveSystem.getIntermissionDuration();

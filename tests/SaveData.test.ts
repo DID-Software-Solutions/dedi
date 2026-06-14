@@ -22,7 +22,7 @@ describe('SaveData.load', () => {
   });
 
   it('returns stored values', () => {
-    SaveData.save({ highScore: 500, highScoreWave: 3, settings: { sensitivity: 0.3, volume: 0.6, fov: 80 } });
+    SaveData.save({ highScore: 500, highScoreWave: 3, settings: { sensitivity: 0.3, volume: 0.6, fov: 80, muted: false } });
     const d = SaveData.load();
     expect(d.highScore).toBe(500);
     expect(d.settings.sensitivity).toBe(0.3);

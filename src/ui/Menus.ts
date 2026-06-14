@@ -61,6 +61,7 @@ export class Menus {
         <div style="color:#446622;letter-spacing:4px;font-size:11px;">WAVE ${wave} COMPLETE</div>
         <div class="countdown" id="countdown-num">${countdown}</div>
         <div style="color:#446622;font-size:11px;letter-spacing:3px;">NEXT WAVE INCOMING</div>
+        <div style="color:#446622;font-size:10px;letter-spacing:2px;margin-top:18px;opacity:.7;">PRESS SPACE TO SKIP</div>
       </div>`;
   }
 

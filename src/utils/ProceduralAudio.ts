@@ -8,6 +8,7 @@ export class ProceduralAudio {
   private noiseBuffer!: AudioBuffer;
   private ambientGain: GainNode | null = null;
   private volume = 0.8;
+  private muted = false;
   private ready = false;
 
   /** Must be called from a user gesture (click) to satisfy autoplay policy. */
@@ -18,7 +19,23 @@ export class ProceduralAudio {
 
   setVolume(v: number): void {
     this.volume = v;
-    if (this.master) this.master.gain.value = v;
+    this._applyGain();
+  }
+
+  setMuted(m: boolean): void {
+    this.muted = m;
+    this._applyGain();
+  }
+
+  toggleMuted(): boolean {
+    this.setMuted(!this.muted);
+    return this.muted;
+  }
+
+  isMuted(): boolean { return this.muted; }
+
+  private _applyGain(): void {
+    if (this.master) this.master.gain.value = this.muted ? 0 : this.volume;
   }
 
   private _init(): void {
@@ -26,7 +43,7 @@ export class ProceduralAudio {
     if (!Ctor) return;
     this.ctx = new Ctor();
     this.master = this.ctx.createGain();
-    this.master.gain.value = this.volume;
+    this.master.gain.value = this.muted ? 0 : this.volume;
     this.master.connect(this.ctx.destination);
 
     // Pre-baked 1s white-noise buffer reused for all noise bursts.
